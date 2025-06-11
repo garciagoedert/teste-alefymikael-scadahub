@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo de IHM SCADA com Funcionalidades Avançadas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F0F2F5;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .rotacao {
+            animation: rotate 2.5s linear infinite;
+        }
+
+        @keyframes flow {
+            to { stroke-dashoffset: -100; }
+        }
+        .flowing {
+            stroke-dasharray: 10 15;
+            stroke-dashoffset: 0;
+            animation: flow 3.5s linear infinite;
+        }
+
+        @keyframes spinner-anim {
+            to {transform: rotate(360deg);}
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spinner-anim 1s linear infinite;
+        }
+
+        .equip-body { fill: #D1D5DB; stroke: #6B7281; stroke-width: 2; }
+        .pipe { fill: none; stroke: #9CA3AF; stroke-width: 8; stroke-linecap: round; }
+        .text-valor { font-size: 1rem; font-weight: 600; fill: #1F2937; }
+        .text-unidade { font-size: 0.8rem; fill: #6B7281; }
+        .text-label { font-weight: bold; fill: #4A5568; font-size: 0.9rem; }
+        .text-valor.status-falha { fill: #DC2626; }
+        
+        .valve-body { transition: transform 0.4s ease-in-out; transform-origin: center; }
+        
+        .control-button { cursor: pointer; transition: all 0.2s ease-in-out; }
+        .control-button:hover > rect { filter: brightness(0.95); }
+        .btn-text { fill: white; font-weight: 600; font-size: 0.8rem; text-anchor: middle; pointer-events: none; }
+        
+        .btn-ligado { fill: #22C55E; }
+        .btn-desligado { fill: #EF4444; }
+        .btn-aberta { fill: #22C55E; }
+        .btn-fechada { fill: #EF4444; }
+        .btn-inativo { opacity: 0.5; cursor: not-allowed; }
+
+        #alarm-banner { transition: all 0.3s ease-out; }
+        .alarm-item {
+            transition: all 0.3s ease-out;
+            transform-origin: top right;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4">
+
+    <!-- Menu de Navegação -->
+    <nav class="w-full bg-white shadow-md mb-4">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="font-bold text-xl text-gray-800">SCADA-HUB</span>
+                </div>
+                <div class="flex space-x-1 text-gray-600 font-medium">
+                    <a href="#" id="nav-overview" class="px-3 py-2 rounded-md text-sm bg-gray-200 text-gray-900">Visão Geral</a>
+                    <a href="#" id="nav-alarms" class="px-3 py-2 rounded-md text-sm hover:bg-gray-100">Alarmes</a>
+                    <a href="#" id="nav-reports" class="px-3 py-2 rounded-md text-sm hover:bg-gray-100">Relatórios</a>
+                    <a href="#" id="nav-settings" class="px-3 py-2 rounded-md text-sm hover:bg-gray-100">Configurações</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div id="alarm-container" class="fixed top-20 right-0 p-4 z-20 w-full max-w-lg">
+        <div id="alarm-banner" class="w-full flex flex-col items-end">
+             <!-- Notificações de Alarme aqui -->
+        </div>
+    </div>
+
+
+    <h1 class="text-2xl font-bold text-gray-700 mb-4">Visão Geral do Processo</h1>
+    <div class="w-full max-w-7xl bg-white rounded-lg shadow-xl p-6 relative">
+        <svg id="p-id-diagrama" viewBox="0 0 1000 650" class="w-full h-auto">
+            
+            <path id="pipe-s1-b1" class="pipe" d="M 120 125 L 250 125" />
+            <path id="pipe-b1-v1" class="pipe" d="M 330 125 L 480 125" />
+            <path id="pipe-v1-tk" class="pipe" d="M 560 125 H 790 V 275 H 820" />
+            <path id="pipe-s2-b2" class="pipe" d="M 120 325 L 250 325" />
+            <path id="pipe-b2-tk" class="pipe" d="M 330 325 H 820" />
+            <path id="pipe-s3-b3" class="pipe" d="M 120 525 L 250 525" />
+            <path id="pipe-b3-v2" class="pipe" d="M 330 525 L 480 525" />
+            <path id="pipe-v2-tk" class="pipe" d="M 560 525 H 790 V 475 H 820" />
+
+            <!-- Separadores -->
+            <g transform="translate(50, 100)"><path class="equip-body" d="M0 0 L10 0 L70 0 L80 0 L40 60 Z" /><rect class="equip-body" x="30" y="60" width="20" height="20" /><text x="40" y="-10" text-anchor="middle" class="text-label">SEPARADOR 01</text></g>
+            <g transform="translate(50, 300)"><path class="equip-body" d="M0 0 L10 0 L70 0 L80 0 L40 60 Z" /><rect class="equip-body" x="30" y="60" width="20" height="20" /><text x="40" y="-10" text-anchor="middle" class="text-label">SEPARADOR 02</text></g>
+            <g transform="translate(50, 500)"><path class="equip-body" d="M0 0 L10 0 L70 0 L80 0 L40 60 Z" /><rect class="equip-body" x="30" y="60" width="20" height="20" /><text x="40" y="-10" text-anchor="middle" class="text-label">SEPARADOR 03</text></g>
+
+            <!-- Motobombas -->
+            <g id="BB01" transform="translate(280, 125)">
+                <path class="equip-body" d="M0 25 A 25 25 0 1 1 50 25 L 50 45 A 45 45 0 1 0 0 45 Z" />
+                <g id="BB01-rotacao-wrapper" style="transform-origin: 25px 25px;"><path d="M25 25 L 12 12 M 25 25 L 38 12 M 25 25 L 12 38 M 25 25 L 38 38" stroke="#6B7281" stroke-width="3"/></g>
+                <text x="25" y="-10" text-anchor="middle" class="text-label">BB01</text>
+                <g class="info-group" transform="translate(65, -50)">
+                    <rect class="status-indicator-falha" x="0" y="0" width="30" height="30" rx="4" fill="none" stroke-width="3"/>
+                    <text class="status-text-falha" x="15" y="21" font-size="20" font-weight="bold" text-anchor="middle" fill="none"></text>
+                    <text x="40" y="10" class="text-valor" id="BB01-pressao">00,00</text>
+                    <text x="80" y="10" class="text-unidade">psi</text>
+                    <text x="40" y="30" class="text-valor" id="BB01-vazao">00,00</text>
+                    <text x="80" y="30" class="text-unidade">l/h</text>
+                </g>
+                <g id="BB01-btn-ligar" class="control-button" transform="translate(0, 50)"><rect class="btn-ligado" width="50" height="22" rx="4"/><text x="25" y="15" class="btn-text">LIGAR</text></g>
+                <g id="BB01-btn-desligar" class="control-button" transform="translate(55, 50)"><rect class="btn-desligado" width="60" height="22" rx="4"/><text x="30" y="15" class="btn-text">DESLIGAR</text></g>
+            </g>
+             <g id="BB02" transform="translate(280, 325)">
+                <path class="equip-body" d="M0 25 A 25 25 0 1 1 50 25 L 50 45 A 45 45 0 1 0 0 45 Z" />
+                <g id="BB02-rotacao-wrapper" style="transform-origin: 25px 25px;"><path d="M25 25 L 12 12 M 25 25 L 38 12 M 25 25 L 12 38 M 25 25 L 38 38" stroke="#6B7281" stroke-width="3"/></g>
+                <text x="25" y="-10" text-anchor="middle" class="text-label">BB02</text>
+                <g class="info-group" transform="translate(65, -50)">
+                    <polygon class="status-indicator-manutencao" points="15,0 32,30 -2,30" fill="none" stroke-width="3"/>
+                    <text class="status-text-manutencao" x="15" y="22" font-size="16" font-weight="bold" text-anchor="middle" fill="none"></text>
+                    <text x="40" y="10" class="text-valor" id="BB02-pressao">00,00</text>
+                    <text x="80" y="10" class="text-unidade">psi</text>
+                    <text x="40" y="30" class="text-valor" id="BB02-vazao">00,00</text>
+                    <text x="80" y="30" class="text-unidade">l/h</text>
+                </g>
+            </g>
+            <g id="BB03" transform="translate(280, 525)">
+                <path class="equip-body" d="M0 25 A 25 25 0 1 1 50 25 L 50 45 A 45 45 0 1 0 0 45 Z" />
+                <g id="BB03-rotacao-wrapper" style="transform-origin: 25px 25px;"><path d="M25 25 L 12 12 M 25 25 L 38 12 M 25 25 L 12 38 M 25 25 L 38 38" stroke="#6B7281" stroke-width="3"/></g>
+                <text x="25" y="-10" text-anchor="middle" class="text-label">BB03</text>
+                 <g class="info-group" transform="translate(65, -20)">
+                    <text x="40" y="-20" class="text-valor" id="BB03-pressao">00,00</text>
+                    <text x="80" y="-20" class="text-unidade">psi</text>
+                    <text x="40" y="0" class="text-valor" id="BB03-vazao">00,00</text>
+                    <text x="80" y="0" class="text-unidade">l/h</text>
+                </g>
+            </g>
+
+            <!-- Válvulas -->
+            <g id="VV01" transform="translate(520, 125)">
+                <rect class="equip-body" x="-10" y="-30" width="20" height="10"/>
+                <g id="VV01-corpo" class="valve-body"><path class="equip-body" d="M0 0 L-20 -20 L-20 20 Z" /><path class="equip-body" d="M0 0 L20 -20 L20 20 Z" /><circle class="equip-body" cx="0" cy="0" r="4"/></g>
+                <text x="0" y="-45" text-anchor="middle" class="text-label">VV01</text>
+                 <g class="info-group" transform="translate(0, -95)">
+                    <text x="50" y="50" class="text-valor" id="VV01-pressao">00,00</text>
+                    <text x="100" y="50" class="text-unidade">psi</text>
+                    <text x="50" y="70" class="text-valor" id="VV01-vazao">00,00</text>
+                    <text x="100" y="70" class="text-unidade">l/h</text>
+                </g>
+                <g id="VV01-btn-abrir" class="control-button" transform="translate(-60, 40)"><rect class="btn-aberta" width="50" height="22" rx="4"/><text x="25" y="15" class="btn-text">ABRIR</text></g>
+                <g id="VV01-btn-fechar" class="control-button" transform="translate(-5, 40)"><rect class="btn-fechada" width="60" height="22" rx="4"/><text x="30" y="15" class="btn-text">FECHAR</text></g>
+            </g>
+            <g id="VV02" transform="translate(520, 525)">
+                <rect class="equip-body" x="-10" y="-30" width="20" height="10"/>
+                <g id="VV02-corpo" class="valve-body"><path class="equip-body" d="M0 0 L-20 -20 L-20 20 Z" /><path class="equip-body" d="M0 0 L20 -20 L20 20 Z" /><circle class="equip-body" cx="0" cy="0" r="4"/></g>
+                <text x="0" y="-45" text-anchor="middle" class="text-label">VV02</text>
+                 <g class="info-group" transform="translate(0, -95)">
+                    <text x="50" y="50" class="text-valor" id="VV02-pressao">00,00</text>
+                    <text x="100" y="50" class="text-unidade">psi</text>
+                    <text x="50" y="70" class="text-valor" id="VV02-vazao">00,00</text>
+                    <text x="100" y="70" class="text-unidade">l/h</text>
+                </g>
+                <text id="VV02-status-text" class="text-label" x="0" y="60" text-anchor="middle"></text>
+            </g>
+
+            <!-- Tanque 01 -->
+            <g transform="translate(820, 250)">
+                <text x="75" y="-15" text-anchor="middle" class="text-label">TANQUE 01</text>
+                <path class="equip-body" d="M0 0 L150 0 L150 250 L75 325 L0 250 Z" />
+                <rect id="tanque01-level" x="5" y="245" width="140" height="0" fill="#3B82F6" rx="2" ry="2"/>
+                <g id="tanque01-info" transform="translate(75, 230)">
+                     <text id="tanque01-volume" text-anchor="middle" font-size="1.5rem" font-weight="bold" fill="white">85,50%</text>
+                     <path id="tanque01-tendencia-up" d="M-7 -30 L0 -40 L7 -30" stroke="white" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                     <path id="tanque01-tendencia-down" d="M-7 25 L0 35 L7 25" stroke="white" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </g>
+            </g>
+        </svg>
+    </div>
+    
+    <!-- Legenda -->
+    <div class="w-full max-w-7xl bg-white rounded-lg shadow-xl p-4 mt-6">
+        <h3 class="font-bold text-gray-700 text-lg mb-3">Legenda</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-sm text-gray-600">
+            <div class="flex items-center"><svg viewBox="0 0 24 24" class="w-6 h-6 mr-2"><rect x="2" y="2" width="20" height="20" rx="3" fill="none" stroke="#DC2626" stroke-width="2.5"/></svg><span>Falha</span></div>
+            <div class="flex items-center"><svg viewBox="0 0 24 24" class="w-6 h-6 mr-2"><polygon points="12,2 22,21 2,21" fill="none" stroke="#F59E0B" stroke-width="2.5"/></svg><span>Manutenção</span></div>
+            <div class="flex items-center"><svg viewBox="0 0 24 24" class="w-6 h-6 mr-2"><g class="rotacao" style="transform-origin: center center;"><path d="M-7 -7 L 7 7 M -7 7 L 7 -7" stroke="#6B7281" stroke-width="2.5" transform="translate(12, 12)"/></g></svg><span>Bomba Ligada</span></div>
+            <div class="flex items-center"><svg viewBox="0 0 24 24" class="w-6 h-6 mr-2"><g transform="translate(2,2)"><path d="M0 10 L-10 -5 L-10 25 Z M0 10 L10 -5 L10 25 Z" fill="#D1D5DB" stroke="#6B7281" stroke-width="1.5"/><rect x="-5" y="-12" width="10" height="5" fill="#D1D5DB" stroke="#6B7281" stroke-width="1.5"/></g></svg><span>Válvula</span></div>
+            <div class="flex items-center"><svg viewBox="0 0 100 20" class="h-6 mr-2"><path d="M0 10 H 100" stroke="#9CA3AF" stroke-width="6" class="flowing"/></svg><span>Fluxo Ativo</span></div>
+             <div class="flex items-center"><button class="bg-white p-1 rounded-full shadow-md"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg></button><span class="ml-2">Reler Sensores</span></div>
+        </div>
+    </div>
+
+    <!-- Botão de Refresh -->
+    <button id="refresh-btn" title="Reler Sensores" class="fixed bottom-4 right-4 bg-white p-3 rounded-full shadow-lg hover:bg-gray-100 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+    </button>
+    
+    <!-- Modal -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-30"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const systemState = {
+                BB01: { pressao: 0.00, vazao: 0.00, estadoOp: 'Falha', estadoFunc: 'Desligada' },
+                BB02: { pressao: 0.00, vazao: 0.00, estadoOp: 'Manutencao', estadoFunc: 'Desligada' },
+                BB03: { pressao: 12.00, vazao: 2.00, estadoOp: 'OK', estadoFunc: 'Ligada' },
+                VV01: { pressao: 10.00, vazao: 1.60, estadoOp: 'OK', estadoFunc: 'Aberta' },
+                VV02: { pressao: 0.00, vazao: 0.00, estadoOp: 'OK', estadoFunc: 'Fechada' },
+                Tanque01: { volume: 85.50, tendencia: 'Enchendo' }
+            };
+
+            const acknowledgedAlarms = new Set();
+            
+            function formatNumber(num) {
+                return num.toFixed(2).replace('.', ',');
+            }
+            
+            function renderSystem() {
+                // Bombas
+                ['BB01', 'BB02', 'BB03'].forEach(id => {
+                    const equip = systemState[id];
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    
+                    document.getElementById(`${id}-pressao`).textContent = formatNumber(equip.pressao);
+                    document.getElementById(`${id}-vazao`).textContent = formatNumber(equip.vazao);
+                    
+                    const rotacaoWrapper = document.getElementById(`${id}-rotacao-wrapper`);
+                    rotacaoWrapper.classList.toggle('rotacao', equip.estadoFunc === 'Ligada');
+                    
+                    const statusFalhaEl = el.querySelector('.status-indicator-falha');
+                    const statusManutencaoEl = el.querySelector('.status-indicator-manutencao');
+                    const statusTextFalha = el.querySelector('.status-text-falha');
+                    const statusTextManutencao = el.querySelector('.status-text-manutencao');
+
+                    if (statusFalhaEl) statusFalhaEl.style.display = 'none';
+                    if (statusTextFalha) statusTextFalha.style.display = 'none';
+                    if (statusManutencaoEl) statusManutencaoEl.style.display = 'none';
+                    if (statusTextManutencao) statusTextManutencao.style.display = 'none';
+                    
+                    if (equip.estadoOp === 'Falha') {
+                        if (statusFalhaEl) { statusFalhaEl.style.display = 'block'; statusFalhaEl.style.stroke = '#DC2626'; }
+                        if (statusTextFalha) { statusTextFalha.textContent = 'F'; statusTextFalha.style.display = 'block'; statusTextFalha.style.fill = '#DC2626'; }
+                    } else if (equip.estadoOp === 'Manutencao') {
+                        if (statusManutencaoEl) { statusManutencaoEl.style.display = 'block'; statusManutencaoEl.style.stroke = '#F59E0B'; }
+                        if (statusTextManutencao) { statusTextManutencao.textContent = 'M'; statusTextManutencao.style.display = 'block'; statusTextManutencao.style.fill = '#F59E0B'; }
+                    }
+
+                    document.getElementById(`${id}-pressao`).classList.toggle('status-falha', equip.pressao > 10.00);
+                });
+                
+                // Valvulas
+                ['VV01', 'VV02'].forEach(id => {
+                    document.getElementById(`${id}-pressao`).textContent = formatNumber(systemState[id].pressao);
+                    document.getElementById(`${id}-vazao`).textContent = formatNumber(systemState[id].vazao);
+                    
+                });
+                document.getElementById('VV02-status-text').textContent = systemState.VV02.estadoFunc.toUpperCase();
+
+                // Botões
+                const btnLigarBB01 = document.getElementById('BB01-btn-ligar');
+                const btnDesligarBB01 = document.getElementById('BB01-btn-desligar');
+                btnLigarBB01.classList.toggle('btn-inativo', systemState.BB01.estadoFunc === 'Ligada');
+                btnDesligarBB01.classList.toggle('btn-inativo', systemState.BB01.estadoFunc === 'Desligada');
+
+                const btnAbrirVV01 = document.getElementById('VV01-btn-abrir');
+                const btnFecharVV01 = document.getElementById('VV01-btn-fechar');
+                btnAbrirVV01.classList.toggle('btn-inativo', systemState.VV01.estadoFunc === 'Aberta');
+                btnFecharVV01.classList.toggle('btn-inativo', systemState.VV01.estadoFunc === 'Fechada');
+
+                // Animação de Fluxo
+                ['pipe-s1-b1', 'pipe-b1-v1'].forEach(p => document.getElementById(p).classList.toggle('flowing', systemState.BB01.estadoFunc === 'Ligada'));
+                document.getElementById('pipe-v1-tk').classList.toggle('flowing', systemState.BB01.estadoFunc === 'Ligada' && systemState.VV01.estadoFunc === 'Aberta');
+                ['pipe-s2-b2', 'pipe-b2-tk'].forEach(p => document.getElementById(p).classList.toggle('flowing', systemState.BB02.estadoFunc === 'Ligada'));
+                ['pipe-s3-b3', 'pipe-b3-v2'].forEach(p => document.getElementById(p).classList.toggle('flowing', systemState.BB03.estadoFunc === 'Ligada'));
+                document.getElementById('pipe-v2-tk').classList.toggle('flowing', systemState.BB03.estadoFunc === 'Ligada' && systemState.VV02.estadoFunc === 'Aberta');
+
+                // Tanque
+                const tanque = systemState.Tanque01;
+                document.getElementById('tanque01-volume').textContent = `${formatNumber(tanque.volume)}%`;
+                const maxHeight = 245;
+                const levelHeight = (tanque.volume / 100) * maxHeight;
+                document.getElementById('tanque01-level').setAttribute('height', levelHeight);
+                document.getElementById('tanque01-level').setAttribute('y', maxHeight - levelHeight + 5);
+                document.getElementById('tanque01-info').setAttribute('transform', `translate(75, ${maxHeight - levelHeight + (levelHeight/2)})`);
+                document.getElementById('tanque01-tendencia-up').style.display = tanque.tendencia === 'Enchendo' ? 'block' : 'none';
+                document.getElementById('tanque01-tendencia-down').style.display = tanque.tendencia === 'Esvaziando' ? 'block' : 'none';
+
+                renderAlarms();
+            }
+
+            function renderAlarms() {
+                const banner = document.getElementById('alarm-banner');
+                banner.innerHTML = ''; 
+
+                Object.entries(systemState).forEach(([id, equip]) => {
+                    if (equip.estadoOp && (equip.estadoOp === 'Falha' || equip.estadoOp === 'Manutencao')) {
+                        const isAck = acknowledgedAlarms.has(id);
+                        const alarmDiv = document.createElement('div');
+                        alarmDiv.dataset.id = id;
+
+                        if (isAck) {
+                            alarmDiv.className = `alarm-item w-8 h-8 rounded-full flex items-center justify-center cursor-pointer mb-2 ${equip.estadoOp === 'Falha' ? 'bg-red-500' : 'bg-yellow-500'}`;
+                            alarmDiv.innerHTML = `<span class="text-white font-bold text-xs">${equip.estadoOp.charAt(0)}</span>`;
+                            alarmDiv.title = `Alarme em ${id}: ${equip.estadoOp}. Clique para ver.`;
+                            alarmDiv.onclick = () => { acknowledgedAlarms.delete(id); renderSystem(); };
+                        } else {
+                            alarmDiv.className = `alarm-item w-full max-w-md p-3 rounded-lg shadow-lg flex items-center justify-between mb-2 ${equip.estadoOp === 'Falha' ? 'bg-red-100 border-red-500' : 'bg-yellow-100 border-yellow-500'} border-l-4`;
+                            const textColor = equip.estadoOp === 'Falha' ? 'text-red-700' : 'text-yellow-700';
+                            alarmDiv.innerHTML = `<div class="flex-grow"><p class="font-bold ${textColor}">${equip.estadoOp} em ${id}</p><p class="text-sm ${textColor}">Verificar equipamento.</p></div><button class="ack-btn bg-white text-gray-600 px-3 py-1 rounded shadow text-sm hover:bg-gray-50 ml-4">OK</button>`;
+                            alarmDiv.querySelector('.ack-btn').onclick = (e) => { e.stopPropagation(); acknowledgedAlarms.add(id); renderSystem(); };
+                        }
+                         banner.appendChild(alarmDiv);
+                    } else {
+                        acknowledgedAlarms.delete(id);
+                    }
+                });
+            }
+            
+            function showModal(content, onConfirm) {
+                const modalContainer = document.getElementById('modal-container');
+                modalContainer.innerHTML = `<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">${content}</div>`;
+                modalContainer.classList.remove('hidden');
+                
+                const confirmBtn = modalContainer.querySelector('.modal-confirm');
+                const closeBtn = modalContainer.querySelector('.modal-close');
+                
+                if (confirmBtn) {
+                    confirmBtn.onclick = () => {
+                        if (onConfirm) onConfirm();
+                    };
+                }
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => modalContainer.classList.add('hidden'));
+                }
+            }
+
+            function handleCommand(equipId, newState) {
+                systemState[equipId].estadoFunc = newState;
+                renderSystem();
+            }
+            
+            ['BB01-btn-ligar', 'BB01-btn-desligar', 'VV01-btn-abrir', 'VV01-btn-fechar'].forEach(btnId => {
+                const button = document.getElementById(btnId);
+                if (button) {
+                    button.addEventListener('click', (e) => {
+                        if(e.currentTarget.classList.contains('btn-inativo')) return;
+                        const [equip, , action] = btnId.split('-');
+                        let newState;
+                        if(equip === 'BB01') newState = action === 'ligar' ? 'Ligada' : 'Desligada';
+                        else newState = action === 'abrir' ? 'Aberta' : 'Fechada';
+                        handleCommand(equip.toUpperCase(), newState);
+                    });
+                }
+            });
+
+             document.getElementById('refresh-btn').addEventListener('click', () => {
+                const content = `
+                    <h3 class="text-lg font-bold text-gray-800">Reler Sensores</h3>
+                    <p class="text-gray-600 my-4">Tem certeza que deseja reler todos os sensores do sistema?</p>
+                    <div class="flex justify-end space-x-4">
+                        <button class="modal-close px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
+                        <button class="modal-confirm px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Confirmar</button>
+                    </div>`;
+                showModal(content, () => {
+                    const loadingContent = `
+                        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-xs text-center">
+                            <div class="spinner mx-auto"></div>
+                            <p class="mt-4 text-gray-700 font-semibold">Relendo Sensores...</p>
+                        </div>`;
+                    showModal(loadingContent);
+                    setTimeout(() => {
+                        document.getElementById('modal-container').classList.add('hidden');
+                        renderSystem();
+                    }, 2000);
+                });
+            });
+            
+            ['nav-alarms', 'nav-reports', 'nav-settings'].forEach(navId => {
+                document.getElementById(navId).addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const title = e.target.textContent;
+                    showModal(`<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg"><div class="flex justify-between items-center"><h3 class="text-lg font-bold">${title}</h3><button class="modal-close text-2xl">&times;</button></div><p class="mt-4">Conteúdo da página de ${title} apareceria aqui.</p></div>`);
+                });
+            });
+
+            setInterval(() => {
+                let flowRate = 0;
+                if(systemState.BB01.estadoFunc === 'Ligada' && systemState.VV01.estadoFunc === 'Aberta' && systemState.BB01.estadoOp !== 'Falha') {
+                    systemState.BB01.pressao = 9.5 + Math.random();
+                    systemState.BB01.vazao = 1.5 + Math.random() * 0.5;
+                    flowRate += systemState.BB01.vazao;
+                } else {
+                     systemState.BB01.pressao = 0;
+                     systemState.BB01.vazao = 0;
+                }
+
+                if (systemState.VV01.estadoFunc === 'Fechada') {
+                    systemState.VV01.vazao = 0;
+                } else {
+                    systemState.VV01.vazao = systemState.BB01.vazao;
+                }
+                systemState.VV01.pressao = systemState.BB01.pressao;
+
+                if(systemState.BB02.estadoFunc === 'Ligada' && systemState.BB02.estadoOp !== 'Manutencao') flowRate += 0.2;
+                if(systemState.BB03.estadoFunc === 'Ligada' && systemState.VV02.estadoFunc === 'Aberta') flowRate += 0.3;
+                
+                if (flowRate > 0) {
+                    systemState.Tanque01.volume = Math.min(100, systemState.Tanque01.volume + flowRate / 5);
+                    systemState.Tanque01.tendencia = 'Enchendo';
+                } else {
+                     systemState.Tanque01.tendencia = 'Estável';
+                }
+
+                if (systemState.BB03.estadoFunc === 'Ligada') {
+                    systemState.BB03.pressao = 11.5 + Math.random();
+                } else {
+                    systemState.BB03.pressao = 0;
+                }
+                renderSystem();
+            }, 1500);
+
+            renderSystem();
+        });
+    </script>
+</body>
+</html>
